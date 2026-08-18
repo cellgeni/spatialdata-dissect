@@ -1,0 +1,57 @@
+[build-system]
+build-backend = "hatchling.build"
+requires = [ "hatch-vcs", "hatchling" ]
+
+
+[project]
+name = "spatialdata_dissect"
+version = "0.1.0"
+description = "Tissue detection and cropping for SpatialData/Xenium images."
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
+authors = [
+  { name = "Stanislaw Makarchuk", email = "sm57@sanger.ac.uk" },
+  { name = "Yinshui Chang", email = "yc6@sanger.ac.uk" },
+  { name = "Martin Prete", email = "mp33@sanger.ac.uk" },
+]
+maintainers = [
+  { name = "Cellular Genomics Informatics", email = "cellgeni@sanger.ac.uk"}
+]
+keywords = ["spatial", "xenium", "spatialdata", "tissue", "segmentation", "cropping"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Image Processing",
+]
+dependencies = [
+    "numpy",
+    "scipy",
+    "scikit-image>=0.26",
+    "shapely",
+    "matplotlib",
+    "pandas",
+    "spatialdata",
+    "spatialdata-io",
+]
+urls.Homepage = "https://github.com/cellgeni/spatialdata-dissect"
+urls.Source = "https://github.com/cellgeni/spatialdata-dissect"
+
+
+[project.optional-dependencies]
+dev = ["pytest", "build", "ruff"]
+
+[project.scripts]
+spatialdata_dissect = "spatialdata_dissect.cli:main"
+
+[tool.hatch]
+build.targets.wheel.packages = [ "src/spatialdata_dissect" ]
+version.path = "src/spatialdata_dissect/__init__.py"
+
+[tool.ruff]
+line-length = 120
+src = [ "src" ]
+extend-include = [ "*.ipynb" ]
+format.docstring-code-format = true
