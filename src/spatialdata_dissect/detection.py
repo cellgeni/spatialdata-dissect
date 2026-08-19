@@ -28,19 +28,45 @@ from .pyramid import pyramid_levels
 class TissuePolicy:
     """Parameters used to detect the main tissue pieces on the smallest image level."""
 
+    # it's the minimum component area for something to count as a real tissue piece
+    # the same value also sets the hole-filling size in the support step 
+    # raise it to ignore small fragments and fill larger interior gaps; lower it to keep tiny pieces and preserve small holes
     min_area_fraction: float = 0.002
+    # morphological closing (dilate then erode) with a disk of this radius on the seed
+    # it fills pin-holes and bridges bright pixels that are almost touching, so a speckled dense region becomes one solid blob
+    # raise it to consolidate a broken-up seed; lower it to keep fine structure separate
     close_radius_px: int = 4
+    # runs an opening (erode then dilate) right after it deletes isolated specks smaller than the disk
+    # raise it if picking up scattered noise; set it to 0 to keep every bright speck
     open_radius_px: int = 2
+    # gaussian-blurs the grayscale before thresholding it's also the sigma used by the density path below
+    # larger values recover sparser tissue but smear intensities down; 0 thresholds the raw image
     support_blur_sigma_px: float = 4.0
+    # sets the support threshold to at least this fraction of the Otsu seed threshold
+    # the primary "how faint can included tissue be" 
+    # lower includes fainter tissue; too low starts pulling in background
     support_threshold_fraction: float = 0.15
+    # it stops the support threshold from sinking into background noise
+    # on clean black backgrounds it's usually inert; on noisy backgrounds it's what prevents flooding
+    # raise it to be more conservative near noise, lower it to allow the threshold closer to background
     support_bg_sigmas: float = 3.0
-    support_density_threshold: float = 0.0
+    # when positive it counts the local fraction of above-threshold pixels and includes any neighborhood
+    # where that fraction exceeds this value even if no single pixel is bright. it's a fraction between 0 and 1
+    support_density_threshold: float = 0.05
+    # this join pieces that are close by closing the combined support mask with a disk of this radius
+    # larger bridges more distant fragments; too large can fuse things that should stay separate
     support_close_radius_px: int = 8
+    # pads each piece's bounding box by this fraction of its own width and height on every side
+    # it only affects the crop rectangle, not the tissue mask
+    # raise it if crops are clipping tissue at the edges
     box_margin_fraction: float = 0.05
     # grow each piece's box to swallow detached fragments within this many
-    # smallest-level px; 0 = off. Only claims strays (non-kept tissue),
+    # smallest-level px; 0 = off. Only claims strays (non-kept tissue)
     # so it never merges two separate detected pieces.
     attach_stray_radius_px: int = 25
+    # caps how many pieces are returned, after sorting largest-first
+    # if you have more physical sections than this you'll lose the smallest ones
+    # if you're getting spurious extra then lowering it trims to the biggest few
     max_candidates: int = 12
 
 
