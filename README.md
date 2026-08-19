@@ -1,7 +1,7 @@
 # SpatialData Dissect ✂️
 
 Tissue detection and cropping for [SpatialData](https://spatialdata.scverse.org/)
-/ Xenium images. `spatialdata_dissect` finds the main tissue pieces on the smallest pyramid
+/ [Xenium](https://www.10xgenomics.com/platforms/xenium) images. `spatialdata_dissect` finds the main tissue pieces on the smallest pyramid
 level of a morphology image, draws diagnostic previews, and produces
 level-0-pixel or global-coordinate geometry you can feed straight into
 `spatialdata.polygon_query`.
@@ -72,6 +72,37 @@ policy = TissuePolicy(
 )
 boxes = detect_tissue(sdata, policy=policy)
 ```
+
+#### Parameters
+
+`TissuePolicy` is a frozen dataclass; pass any subset of fields to override the
+defaults. The knobs fall into four groups that follow the detection pipeline:
+
+- **seed cleanup** — `close_radius_px`, `open_radius_px`
+- **support expansion** (how much faint tissue is pulled in around the bright
+  seed) — `support_blur_sigma_px`, `support_threshold_fraction`,
+  `support_bg_sigmas`, `support_density_threshold`, `support_close_radius_px`
+- **component selection** — `min_area_fraction`, `max_candidates`
+- **box building** — `box_margin_fraction`, `attach_stray_radius_px`
+
+The support-expansion group are the recall levers: they decide how much
+low-density tissue (e.g. dermis) survives. The selection and box knobs only
+affect how captured tissue is split into pieces and cropped, so they won't help
+if tissue was never captured in the first place — tune the support group first.
+
+| Parameter | Default | What it does |
+| --- | --- | --- |
+| `min_area_fraction` | `0.002` | Minimum component area, as a fraction of the image, for a blob to count as a real tissue piece; the same value sets the hole-filling size in the support step. Raise it to ignore small fragments and fill larger interior gaps; lower it to keep tiny pieces and preserve small holes. |
+| `close_radius_px` | `4` | Radius of the morphological closing (dilate then erode) applied to the Otsu seed. Fills pin-holes and bridges nearly-touching bright pixels, so a speckled dense region becomes one solid blob. Raise it to consolidate a broken-up seed; lower it to keep fine structure separate. |
+| `open_radius_px` | `2` | Radius of the opening (erode then dilate) applied right after closing; deletes isolated specks smaller than the disk. Raise it if the seed picks up scattered noise; set it to `0` to keep every bright speck. |
+| `support_blur_sigma_px` | `4.0` | Gaussian blur applied to the grayscale before the support threshold (also the sigma used by the density path). Larger values recover sparser tissue but smear intensities down; `0` thresholds the raw image. |
+| `support_threshold_fraction` | `0.15` | Sets the support threshold to at least this fraction of the Otsu seed threshold — the primary "how faint can included tissue be" knob. Lower includes fainter tissue; too low starts pulling in background. |
+| `support_bg_sigmas` | `3.0` | Floors the support threshold at background median + this many robust standard deviations, keeping it from sinking into background noise. Usually inert on clean black backgrounds; on noisy ones it prevents flooding. Raise it to be more conservative near noise; lower it to allow the threshold closer to background. |
+| `support_density_threshold` | `0.05` | When positive, counts the local fraction of above-threshold pixels and includes any neighbourhood where that fraction exceeds this value, even if no single pixel is bright (a fraction between 0 and 1). This is the lever for sparse-but-real tissue such as dermis; `0` disables it. |
+| `support_close_radius_px` | `8` | Radius of the closing applied to the combined support mask, joining pieces that are close. Larger bridges more distant fragments; too large can fuse things that should stay separate. |
+| `box_margin_fraction` | `0.05` | Pads each piece's bounding box by this fraction of its own width and height on every side. Affects only the crop rectangle, not the tissue mask. Raise it if crops are clipping tissue at the edges. |
+| `attach_stray_radius_px` | `25` | Grows each piece's box to swallow detached fragments within this many smallest-level pixels; `0` disables. Only claims strays (non-kept tissue), so it never merges two separate detected pieces. |
+| `max_candidates` | `12` | Caps how many pieces are returned, after sorting largest-first. With more physical sections than this you'll lose the smallest; lower it to trim spurious extras to the biggest few. |
 
 ## Command-line usage
 
